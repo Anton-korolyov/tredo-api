@@ -1,11 +1,11 @@
 ﻿using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Tredo.Api.Data;
+using Tredo.Api.Models;
 using Tredo.Api.Services;
-using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 // ======================
@@ -139,5 +139,8 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
+    DbSeeder.Seed(db);
 }
+
+
 app.Run();
