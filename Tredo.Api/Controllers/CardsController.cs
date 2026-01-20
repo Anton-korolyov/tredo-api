@@ -135,7 +135,7 @@ namespace Tredo.Api.Controllers
                 using var stream = System.IO.File.Create(fullPath);
                 await req.Image.CopyToAsync(stream);
 
-                card.Image = $"/uploads/cards/{fileName}";
+                card.Image = $"/api/uploads/cards/{fileName}";
             }
 
             _db.Cards.Add(card);
@@ -187,7 +187,7 @@ namespace Tredo.Api.Controllers
                 using var stream = System.IO.File.Create(fullPath);
                 await req.Image.CopyToAsync(stream);
 
-                card.Image = $"/uploads/cards/{fileName}";
+                card.Image = $"/api/uploads/cards/{fileName}";
             }
 
             await _db.SaveChangesAsync();
