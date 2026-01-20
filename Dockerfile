@@ -4,13 +4,15 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# copy csproj and restore
-COPY *.csproj ./
-RUN dotnet restore
+# copy solution and restore
+COPY Tredo.Api.sln .
+COPY Tredo.Api/Tredo.Api.csproj Tredo.Api/
 
-# copy everything and build
+RUN dotnet restore Tredo.Api.sln
+
+# copy everything and publish
 COPY . .
-RUN dotnet publish -c Release -o /app/publish
+RUN dotnet publish Tredo.Api/Tredo.Api.csproj -c Release -o /app/publish
 
 # =============================
 # RUNTIME
@@ -21,7 +23,6 @@ WORKDIR /app
 COPY --from=build /app/publish .
 
 EXPOSE 8080
-
 ENV ASPNETCORE_URLS=http://+:8080
 
 ENTRYPOINT ["dotnet", "Tredo.Api.dll"]
