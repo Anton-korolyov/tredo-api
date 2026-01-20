@@ -1,0 +1,6 @@
+@Tredo.Api_HostAddress = http://localhost:5157
+
+GET {{Tredo.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

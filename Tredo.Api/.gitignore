@@ -1,0 +1,13 @@
+﻿# build
+bin/
+obj/
+.vs/
+*.user
+*.suo
+# user files
+*.cache
+*.log
+
+
+# docker
+*.env
