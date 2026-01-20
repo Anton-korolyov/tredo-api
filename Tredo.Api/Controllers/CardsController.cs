@@ -117,10 +117,22 @@ namespace Tredo.Api.Controllers
             // image
             if (req.Image != null)
             {
-                var fileName = $"{Guid.NewGuid()}{Path.GetExtension(req.Image.FileName)}";
-                var path = Path.Combine("wwwroot/uploads/cards", fileName);
+                var uploadsPath = Path.Combine(
+                    Directory.GetCurrentDirectory(),
+                    "wwwroot",
+                    "uploads",
+                    "cards"
+                );
 
-                using var stream = System.IO.File.Create(path);
+                if (!Directory.Exists(uploadsPath))
+                {
+                    Directory.CreateDirectory(uploadsPath);
+                }
+
+                var fileName = $"{Guid.NewGuid()}{Path.GetExtension(req.Image.FileName)}";
+                var fullPath = Path.Combine(uploadsPath, fileName);
+
+                using var stream = System.IO.File.Create(fullPath);
                 await req.Image.CopyToAsync(stream);
 
                 card.Image = $"/uploads/cards/{fileName}";
@@ -157,10 +169,22 @@ namespace Tredo.Api.Controllers
 
             if (req.Image != null)
             {
-                var fileName = $"{Guid.NewGuid()}{Path.GetExtension(req.Image.FileName)}";
-                var path = Path.Combine("wwwroot/uploads/cards", fileName);
+                var uploadPath = Path.Combine(
+                    Directory.GetCurrentDirectory(),
+                    "wwwroot",
+                    "uploads",
+                    "cards"
+                );
 
-                using var stream = System.IO.File.Create(path);
+                if (!Directory.Exists(uploadPath))
+                {
+                    Directory.CreateDirectory(uploadPath);
+                }
+
+                var fileName = $"{Guid.NewGuid()}{Path.GetExtension(req.Image.FileName)}";
+                var fullPath = Path.Combine(uploadPath, fileName);
+
+                using var stream = System.IO.File.Create(fullPath);
                 await req.Image.CopyToAsync(stream);
 
                 card.Image = $"/uploads/cards/{fileName}";
