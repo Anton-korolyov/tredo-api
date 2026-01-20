@@ -142,11 +142,6 @@ using (var scope = app.Services.CreateScope())
     db.Database.EnsureCreated();
     DbSeeder.Seed(db);
 }
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new PhysicalFileProvider(
-        Path.Combine(Directory.GetCurrentDirectory(), "wwwroot")),
-    RequestPath = ""
-});
+
 
 app.Run();
