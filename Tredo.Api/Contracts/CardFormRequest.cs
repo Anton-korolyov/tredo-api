@@ -1,5 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using Tredo.Api.Models;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using static Org.BouncyCastle.Bcpg.Attr.ImageAttrib;
 
 namespace Tredo.Api.Contracts
 {
@@ -11,8 +13,8 @@ namespace Tredo.Api.Contracts
    
         public string Phone { get; set; } = "";
         public string Description { get; set; } = "";
-        [Range(1, int.MaxValue, ErrorMessage = "Category is required")]
         public int CategoryId { get; set; }
         public IFormFile? Image { get; set; }
     }
 }
+
