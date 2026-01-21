@@ -28,6 +28,7 @@ namespace Tredo.Api.Controllers
             [FromQuery] string? search,
             [FromQuery] int? categoryId,
             [FromQuery] int? cityId,
+            [FromQuery] string lang = "he",
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 12
         )
@@ -64,7 +65,10 @@ namespace Tredo.Api.Controllers
                     Phone = c.Phone,
 
                     CategoryId = c.CategoryId,
-                    CategoryName = c.Category.Name,
+                       CategoryName =
+                   lang == "ru" ? c.Category.NameRu :
+                   lang == "en" ? c.Category.NameEn :
+                  c.Category.NameHe, 
 
                     CityId = c.CityId,
                     CityName = c.City.NameEn, // фронт переведёт если нужно
@@ -150,7 +154,8 @@ namespace Tredo.Api.Controllers
         [Authorize]
         [HttpPut("{id}")]
         [Consumes("multipart/form-data")]
-        public async Task<IActionResult> Update(Guid id, [FromForm] CardFormRequest req)
+        public async Task<IActionResult> Update(Guid id, [FromForm] CardFormRequest req,
+    [FromQuery] string lang = "he")
         {
             var userId = Guid.Parse(
                 User.FindFirstValue(ClaimTypes.NameIdentifier)!
@@ -192,7 +197,7 @@ namespace Tredo.Api.Controllers
 
             await _db.SaveChangesAsync();
 
-            return Ok(await BuildResponse(card.Id));
+            return Ok(await BuildResponse(card.Id, lang));
         }
 
         // =====================================================
@@ -245,7 +250,7 @@ namespace Tredo.Api.Controllers
         // HELPER
         // =====================================================
         [HttpGet("search")]
-        private async Task<CardResponse> BuildResponse(Guid id)
+        private async Task<CardResponse> BuildResponse(Guid id, string lang = "he")
         {
             return await _db.Cards
                 .Include(c => c.Category)
@@ -261,10 +266,16 @@ namespace Tredo.Api.Controllers
                     Phone = c.Phone,
 
                     CategoryId = c.CategoryId,
-                    CategoryName = c.Category.Name,
+                    CategoryName =
+                        lang == "ru" ? c.Category.NameRu :
+                        lang == "en" ? c.Category.NameEn :
+                        c.Category.NameHe,
 
                     CityId = c.CityId,
-                    CityName = c.City.NameEn,
+                    CityName =
+                        lang == "ru" ? c.City.NameRu :
+                        lang == "en" ? c.City.NameEn :
+                        c.City.NameHe,
 
                     OwnerId = c.OwnerId
                 })
