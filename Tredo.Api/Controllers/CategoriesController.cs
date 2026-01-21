@@ -17,14 +17,17 @@ namespace Tredo.Api.Controllers
 
         // GET: /api/categories
         [HttpGet]
-        public IActionResult GetAll()
+        public IActionResult GetAll([FromQuery] string lang = "he")
         {
             var categories = _db.Categories
                 .OrderBy(c => c.Id)
                 .Select(c => new
                 {
-                    c.Id,
-                    c.Name
+                    Id = c.Id,
+                    Name =
+                        lang == "ru" ? c.NameRu :
+                        lang == "en" ? c.NameEn :
+                        c.NameHe
                 })
                 .ToList();
 

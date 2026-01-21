@@ -11,14 +11,15 @@ namespace Tredo.Api.Models
             if (!db.Categories.Any())
             {
                 db.Categories.AddRange(
-                    new Category { Id = 1, Name = "Electronics" },
-                    new Category { Id = 2, Name = "Phones" },
-                    new Category { Id = 3, Name = "Cars" },
-                    new Category { Id = 4, Name = "Home" },
-                    new Category { Id = 5, Name = "Furniture" },
-                    new Category { Id = 6, Name = "Clothes" },
-                    new Category { Id = 7, Name = "Other" }
-                );
+                         new Category { Id = 1, NameHe = "אלקטרוניקה", NameEn = "Electronics", NameRu = "Электроника" },
+                         new Category { Id = 2, NameHe = "טלפונים", NameEn = "Phones", NameRu = "Телефоны" },
+                         new Category { Id = 3, NameHe = "רכב", NameEn = "Cars", NameRu = "Авто" },
+                         new Category { Id = 4, NameHe = "בית", NameEn = "Home", NameRu = "Дом" },
+                         new Category { Id = 5, NameHe = "ריהוט", NameEn = "Furniture", NameRu = "Мебель" },
+                         new Category { Id = 6, NameHe = "ביגוד", NameEn = "Clothes", NameRu = "Одежда" },
+                         new Category { Id = 7, NameHe = "אחר", NameEn = "Other", NameRu = "Другое" }
+                     );
+
                 if (!db.Cities.Any())
                 {
                     db.Cities.AddRange(
