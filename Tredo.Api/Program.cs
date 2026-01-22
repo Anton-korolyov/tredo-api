@@ -7,6 +7,7 @@ using Microsoft.OpenApi.Models;
 using Tredo.Api.Data;
 using Tredo.Api.Models;
 using Tredo.Api.Services;
+using Microsoft.Extensions.Caching.StackExchangeRedis;
 var builder = WebApplication.CreateBuilder(args);
 
 // ======================
@@ -115,7 +116,11 @@ builder.Services.AddCors(opt =>
             .AllowCredentials();
     });
 });
-
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = "redis:6379";
+    options.InstanceName = "Tredo:";
+});
 // ======================
 // Services
 // ======================
@@ -139,7 +144,7 @@ app.UseStaticFiles();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.EnsureCreated();
+    db.Database.Migrate(); ;
     DbSeeder.Seed(db);
 }
 

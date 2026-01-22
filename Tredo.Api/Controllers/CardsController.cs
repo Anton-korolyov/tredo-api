@@ -6,7 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using Tredo.Api.Contracts;
 using Tredo.Api.Data;
 using Tredo.Api.Models;
-
+using Microsoft.Extensions.Caching.Distributed;
+using System.Text.Json;
 namespace Tredo.Api.Controllers
 {
     [Route("api/[controller]")]
@@ -14,10 +15,12 @@ namespace Tredo.Api.Controllers
     public class CardsController : ControllerBase
     {
         private readonly AppDbContext _db;
+        private readonly IDistributedCache _cache;
 
-        public CardsController(AppDbContext db)
+        public CardsController(AppDbContext db, IDistributedCache cache)
         {
             _db = db;
+            _cache = cache;
         }
 
         // =====================================================
@@ -33,15 +36,37 @@ namespace Tredo.Api.Controllers
             [FromQuery] int pageSize = 12
         )
         {
+            // ================= CACHE VERSION =================
+            var versionStr = await _cache.GetStringAsync("cards:version");
+            if (!int.TryParse(versionStr, out var version) || version < 1)
+                version = 1;
+
+            // ================= CACHE KEY =================
+            var cacheKey =
+                $"cards:v{version}:" +
+                $"s={search}|" +
+                $"cat={categoryId}|" +
+                $"city={cityId}|" +
+                $"lang={lang}|" +
+                $"p={page}|" +
+                $"ps={pageSize}";
+
+            // ================= TRY REDIS =================
+            var cached = await _cache.GetStringAsync(cacheKey);
+            if (cached != null)
+                return Ok(JsonSerializer.Deserialize<object>(cached)!);
+
+            // ================= QUERY =================
             var query = _db.Cards
                 .Include(c => c.Category)
                 .Include(c => c.City)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(search))
+            {
                 query = query.Where(c =>
-                    c.Title.ToLower().Contains(search.ToLower())
-                );
+                    EF.Functions.ILike(c.Title, $"%{search}%"));
+            }
 
             if (categoryId.HasValue)
                 query = query.Where(c => c.CategoryId == categoryId.Value);
@@ -65,25 +90,39 @@ namespace Tredo.Api.Controllers
                     Phone = c.Phone,
 
                     CategoryId = c.CategoryId,
-                       CategoryName =
-                   lang == "ru" ? c.Category.NameRu :
-                   lang == "en" ? c.Category.NameEn :
-                  c.Category.NameHe, 
+                    CategoryName =
+                        lang == "ru" ? c.Category.NameRu :
+                        lang == "en" ? c.Category.NameEn :
+                        c.Category.NameHe,
 
                     CityId = c.CityId,
-                    CityName = c.City.NameEn, // фронт переведёт если нужно
+                    CityName =
+                        lang == "ru" ? c.City.NameRu :
+                        lang == "en" ? c.City.NameEn :
+                        c.City.NameHe,
 
                     OwnerId = c.OwnerId
                 })
                 .ToListAsync();
 
-            return Ok(new
+            var result = new
             {
                 total,
                 page,
                 pageSize,
                 items
-            });
+            };
+
+            // ================= SAVE REDIS =================
+            await _cache.SetStringAsync(
+                cacheKey,
+                JsonSerializer.Serialize(result),
+                new DistributedCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(2)
+                });
+
+            return Ok(result);
         }
 
         // =====================================================
@@ -95,10 +134,8 @@ namespace Tredo.Api.Controllers
         public async Task<IActionResult> Create([FromForm] CreateCardRequest req)
         {
             var userId = Guid.Parse(
-                User.FindFirstValue(ClaimTypes.NameIdentifier)!
-            );
+                User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            // validate foreign keys
             if (!await _db.Categories.AnyAsync(c => c.Id == req.CategoryId))
                 return BadRequest("Invalid category");
 
@@ -111,30 +148,21 @@ namespace Tredo.Api.Controllers
                 Price = req.Price,
                 Description = req.Description,
                 Phone = req.Phone,
-
                 CategoryId = req.CategoryId,
                 CityId = req.CityId,
-
                 OwnerId = userId
             };
 
-            // image
             if (req.Image != null)
             {
-                var uploadsPath = Path.Combine(
+                var path = Path.Combine(
                     Directory.GetCurrentDirectory(),
-                    "wwwroot",
-                    "uploads",
-                    "cards"
-                );
+                    "wwwroot", "uploads", "cards");
 
-                if (!Directory.Exists(uploadsPath))
-                {
-                    Directory.CreateDirectory(uploadsPath);
-                }
+                Directory.CreateDirectory(path);
 
                 var fileName = $"{Guid.NewGuid()}{Path.GetExtension(req.Image.FileName)}";
-                var fullPath = Path.Combine(uploadsPath, fileName);
+                var fullPath = Path.Combine(path, fileName);
 
                 using var stream = System.IO.File.Create(fullPath);
                 await req.Image.CopyToAsync(stream);
@@ -145,6 +173,8 @@ namespace Tredo.Api.Controllers
             _db.Cards.Add(card);
             await _db.SaveChangesAsync();
 
+            await IncrementCardsVersion();
+
             return Ok(await BuildResponse(card.Id));
         }
 
@@ -154,12 +184,13 @@ namespace Tredo.Api.Controllers
         [Authorize]
         [HttpPut("{id}")]
         [Consumes("multipart/form-data")]
-        public async Task<IActionResult> Update(Guid id, [FromForm] CardFormRequest req,
-    [FromQuery] string lang = "he")
+        public async Task<IActionResult> Update(
+            Guid id,
+            [FromForm] CardFormRequest req,
+            [FromQuery] string lang = "he")
         {
             var userId = Guid.Parse(
-                User.FindFirstValue(ClaimTypes.NameIdentifier)!
-            );
+                User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
             var card = await _db.Cards.FindAsync(id);
             if (card == null) return NotFound();
@@ -174,20 +205,14 @@ namespace Tredo.Api.Controllers
 
             if (req.Image != null)
             {
-                var uploadPath = Path.Combine(
+                var path = Path.Combine(
                     Directory.GetCurrentDirectory(),
-                    "wwwroot",
-                    "uploads",
-                    "cards"
-                );
+                    "wwwroot", "uploads", "cards");
 
-                if (!Directory.Exists(uploadPath))
-                {
-                    Directory.CreateDirectory(uploadPath);
-                }
+                Directory.CreateDirectory(path);
 
                 var fileName = $"{Guid.NewGuid()}{Path.GetExtension(req.Image.FileName)}";
-                var fullPath = Path.Combine(uploadPath, fileName);
+                var fullPath = Path.Combine(path, fileName);
 
                 using var stream = System.IO.File.Create(fullPath);
                 await req.Image.CopyToAsync(stream);
@@ -196,6 +221,7 @@ namespace Tredo.Api.Controllers
             }
 
             await _db.SaveChangesAsync();
+            await IncrementCardsVersion();
 
             return Ok(await BuildResponse(card.Id, lang));
         }
@@ -208,8 +234,7 @@ namespace Tredo.Api.Controllers
         public async Task<IActionResult> Delete(Guid id)
         {
             var userId = Guid.Parse(
-                User.FindFirstValue(ClaimTypes.NameIdentifier)!
-            );
+                User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
             var card = await _db.Cards.FindAsync(id);
             if (card == null) return NotFound();
@@ -217,6 +242,8 @@ namespace Tredo.Api.Controllers
 
             _db.Cards.Remove(card);
             await _db.SaveChangesAsync();
+
+            await IncrementCardsVersion();
 
             return NoContent();
         }
@@ -229,8 +256,7 @@ namespace Tredo.Api.Controllers
         public async Task<IActionResult> MyCards()
         {
             var userId = Guid.Parse(
-                User.FindFirstValue(ClaimTypes.NameIdentifier)!
-            );
+                User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
             var items = await _db.Cards
                 .Where(c => c.OwnerId == userId)
@@ -247,9 +273,8 @@ namespace Tredo.Api.Controllers
         }
 
         // =====================================================
-        // HELPER
+        // HELPERS
         // =====================================================
-        [HttpGet("search")]
         private async Task<CardResponse> BuildResponse(Guid id, string lang = "he")
         {
             return await _db.Cards
@@ -281,5 +306,16 @@ namespace Tredo.Api.Controllers
                 })
                 .FirstAsync();
         }
+
+        private async Task IncrementCardsVersion()
+        {
+            var current = await _cache.GetStringAsync("cards:version");
+
+            if (!int.TryParse(current, out var version))
+                version = 1;
+
+            await _cache.SetStringAsync("cards:version", (version + 1).ToString());
+        }
     }
 }
+
