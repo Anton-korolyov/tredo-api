@@ -118,7 +118,7 @@ builder.Services.AddCors(opt =>
 });
 builder.Services.AddStackExchangeRedisCache(options =>
 {
-    options.Configuration = "redis:6379";
+    options.Configuration = "redis:6379,abortConnect=false";
     options.InstanceName = "Tredo:";
 });
 // ======================
