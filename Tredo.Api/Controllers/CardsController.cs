@@ -54,7 +54,7 @@ namespace Tredo.Api.Controllers
             // ================= TRY REDIS =================
             var cached = await _cache.GetStringAsync(cacheKey);
             if (cached != null)
-                return Ok(JsonSerializer.Deserialize<object>(cached)!);
+                return Ok(JsonSerializer.Deserialize<object>(cached, JsonOptions)!);
 
             // ================= QUERY =================
             var query = _db.Cards
@@ -116,7 +116,7 @@ namespace Tredo.Api.Controllers
             // ================= SAVE REDIS =================
             await _cache.SetStringAsync(
                 cacheKey,
-                JsonSerializer.Serialize(result),
+                JsonSerializer.Serialize(result, JsonOptions),
                 new DistributedCacheEntryOptions
                 {
                     AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(2)
@@ -316,6 +316,11 @@ namespace Tredo.Api.Controllers
 
             await _cache.SetStringAsync("cards:version", (version + 1).ToString());
         }
+        private static readonly JsonSerializerOptions JsonOptions =
+           new()
+           {
+               PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+           };
     }
 }
 
