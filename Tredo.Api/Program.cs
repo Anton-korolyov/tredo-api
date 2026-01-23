@@ -13,12 +13,18 @@ var builder = WebApplication.CreateBuilder(args);
 // ======================
 // Controllers
 // ======================
-builder.Services.AddControllers().AddJsonOptions(options =>
+builder.Services.AddControllers()
+      .AddJsonOptions(options =>
+      {
+          options.JsonSerializerOptions.PropertyNamingPolicy =
+              System.Text.Json.JsonNamingPolicy.CamelCase;
+      });
+
+builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =>
 {
-    options.JsonSerializerOptions.PropertyNamingPolicy =
+    options.SerializerOptions.PropertyNamingPolicy =
         System.Text.Json.JsonNamingPolicy.CamelCase;
-}); 
-builder.Services.AddEndpointsApiExplorer();
+});
 
 // ======================
 // Swagger
